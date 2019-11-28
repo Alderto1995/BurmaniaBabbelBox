@@ -1,0 +1,236 @@
+#!/usr/bin/python 
+               
+#import programs
+import pyaudio, wave, os, sys, select, random, string, time, pygame, errno, threading, string
+from contextlib import contextmanager
+try:
+    import httplib
+except:
+    import http.clien as httplib
+
+#Thread voor de tijd bij te houden hoelang er is opgenomen
+class timeThread (threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        ShowTimeRecorded()
+        
+#Laat de tijd zien die is opgenomen
+def ShowTimeRecorded():
+    recordedTime = 0
+    while recording == True:
+        sys.stdout.write("\r")
+        sys.stdout.write("{:2d} seconden opgenomen.".format(recordedTime))
+        sys.stdout.flush()
+        time.sleep(1)
+        recordedTime += 1
+                
+#Thread die een keer in de zoveel keer welkom zegt
+class WelkomThread (threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        for x in range(TijdVoorEersteWelkom):
+                if sayWelkom == True:
+                    time.sleep(1)
+        while sayWelkom == True:
+            playWelkom()
+            for x in range(TijdTussenWelkomHeten):
+                if sayWelkom == True:
+                    time.sleep(1)
+        
+#Speel het welkom fragment
+def playWelkom():
+    os.system("amixer sset 'PCM' 85%")
+    PaintScreen("NaamIngeven")
+    Play_Command = 'aplay -q '+'/home/pi/Programma_bestanden/BabbelboxWELKOM.wav'
+    os.system(Play_Command)
+    os.system("amixer sset 'PCM' 100%")
+    PaintScreen("NaamIngeven")
+            
+#Create random String, so no duplicates are made                
+def randomString(stringLength=7):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
+
+#Speel een random vraag af
+def PlayRandomVraag():
+    index = random.randrange(0, len(filesVragen))
+    FileName = filesVragen[index]
+    FileNameAndPath = '/home/pi/Vragen/'+ FileName
+    Play_Command = 'aplay -q '+FileNameAndPath
+    os.system(Play_Command)
+    ClearScreen
+    return FileName
+    
+#record the audio  
+def recordAudio(chunk, frames):
+    while True:      
+        data = stream.read(chunk)
+        frames.append(data)
+        #wait for enter press, then break recording
+        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+            break
+
+#De Methode die steeds het scherm schrijft aan de hand van de status       
+def PaintScreen(status):
+    ClearScreen()
+    if status == "NaamIngeven":
+        print("Welkom bij de Burmania Babbelbox")
+        print("Wat is je naam?")
+    elif status == "KeuzeIngeven":
+        print("Druk op "+ KeuzeRandomVraag +" + [enter] om een vraag te beantwoorden")
+        print("Druk op "+ KeuzeEigenVerhaal +" + [enter] om een verhaal te vertellen")
+        print("Hierna begint het opnemen automatisch")    
+    elif status == "Opnemen":
+        print(naam_Opnemer+", er wordt opgenomen!")
+        print("Vertel je verhaal!\n")
+        print("Druk op [enter] om te stoppen met opnemen")
+    elif status == "VraagInspreken":
+        print("Welke vraag wil je inspreken?")
+    elif status == "Bedankt":
+        print(naam_Opnemer+", bedankt voor je verhaal!\n")
+        print("Opslaan, eventjes geduld....")
+
+#Maak het scherm leeg
+def ClearScreen():
+    os.system('cls' if os.name == 'nt' else 'clear')  
+   
+#Als er geen map is, maak die dan
+def CreatFolderIfNotExcist(FilePath):
+    try:
+        os.makedirs(FilePath)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise 
+            
+#check internet connection
+def checkInternetConnection():
+    conn = httplib.HTTPConnection("www.google.com", timeout=5)
+    try:
+        conn.request("HEAD", "/")
+        conn.close()
+        print("Dit kan een minuut duren")
+        return True
+    except:
+        conn.close()
+        return False
+        
+#upload everythong to drive    
+def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
+    if keuze == KeuzeVraagInspreken:
+        google_drive_Upload_Command = "rclone copy " + wav_output_filename + " babbelbox:/2019/Babbelbox/Vragen/"
+    else:
+        google_drive_Upload_Command = "rclone move " + wav_output_filename + " babbelbox:/2019/Babbelbox/Nieuwe_Verhalen/" + VraagWithoutExtension
+    os.system(google_drive_Upload_Command)
+
+#Instellingen goedzetten
+pathVragen = '/home/pi/Vragen/'
+filesVragen = os.listdir(pathVragen)
+os.system('amixer cset numid=3 1')  
+  
+#Alle Variabbelen 
+form_1 = pyaudio.paInt16    # 16-bit resolution
+chans = 1                   # 1 channel
+samp_rate = 44100           # 48kHz sampling rate
+chunk = 4096                # 2^12 samples for buffer
+dev_index = 2               # device index found by p.get_device_info_by_index(ii)
+recording = False
+sayWelkom = True
+KeuzeRandomVraag = '1'      #De toets om een random vraag te beantwoorden
+KeuzeEigenVerhaal = '2'     #De toets voor je eigen verhaal in te spreken
+KeuzeVraagInspreken = '5'   #De toets om een nieuwe vraag in te stellen
+TijdTussenWelkomHeten = 300 #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
+TijdVoorEersteWelkom = 20   #De eerste keer duurt het wat langer voordat je welkom wordt geheten
+
+#De main loop waar je nooit uitkomt
+while True: 
+    sayWelkom = True
+    welkomThread = WelkomThread()
+    welkomThread.start()
+    naam_Opnemer = ""
+    frames = []
+    keuze = ""
+    VraagWithoutExtension = ""
+    
+    #make sure there is a name
+    while naam_Opnemer == "":
+        PaintScreen("NaamIngeven")
+        naam_Opnemer = raw_input()
+        naam_Opnemer_Underscore = naam_Opnemer.replace(" ", "_")
+    sayWelkom = False
+    welkomThread.join()
+    
+    #Wachten op een keuze
+    while keuze == "":
+        PaintScreen("KeuzeIngeven")
+        keuze = raw_input()
+        if keuze == KeuzeRandomVraag:
+            break
+        elif keuze == KeuzeEigenVerhaal:
+            break
+        elif keuze == KeuzeVraagInspreken:
+            break
+        keuze = ""
+    naam_opnemer_random = naam_Opnemer_Underscore + "_"+ randomString() 
+    
+    #Handelen aan de hand van de verschillende keuzes die gemaakt zijn
+    if keuze == '1':        #beantwoord een random vraag
+        Vraag = PlayRandomVraag()
+        VraagWithoutExtension = os.path.splitext(Vraag)[0]
+        FileFolder = "/home/pi/Opnames/"+ VraagWithoutExtension+"/" 
+        CreatFolderIfNotExcist(FileFolder)
+        wav_output_filename = FileFolder + naam_opnemer_random + ".wav"
+    elif keuze == '2':      #vertel een verhaal
+        wav_output_filename = "/home/pi/Opnames/" + naam_opnemer_random + ".wav" 
+    elif keuze == '3':      #spreek een vraag in
+        PaintScreen("VraagInspreken")
+        intesprekenVraag = raw_input()
+        intesprekenVraag_Underscore = intesprekenVraag.replace(" ", "_")
+        wav_output_filename = pathVragen + intesprekenVraag_Underscore +".wav"
+        
+    #create listening stream
+    audio = pyaudio.PyAudio() # create pyaudio instantiation
+    stream = audio.open(format = form_1,rate = samp_rate,channels = chans, \
+                        input_device_index = dev_index,input = True, \
+                        frames_per_buffer=chunk)
+    
+    #Begin met opnemen, en start de thread met de tijd dat er opgenomen is
+    PaintScreen("Opnemen")
+    recording = True
+    tijdThread = timeThread()
+    tijdThread.start()
+    recordAudio(chunk, frames)
+    recording = False
+    tijdThread.join()
+    
+    # stop the stream, close it, and terminate the pyaudio instantiation
+    PaintScreen("Bedankt")
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+
+    # save the audio frames as .wav file
+    wavefile = wave.open(wav_output_filename,'wb')
+    wavefile.setnchannels(chans)
+    wavefile.setsampwidth(audio.get_sample_size(form_1))
+    wavefile.setframerate(samp_rate)
+    wavefile.writeframes(b''.join(frames))
+    wavefile.close()
+    
+    #if internet connection, then save to drive
+    #if checkInternetConnection():
+    #    uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze)
+    if keuze == KeuzeVraagInspreken:
+        filesVragen = os.listdir(pathVragen)
+        
+    #wait 2 seconds to read    
+    raw_input("Opgeslagen!")
+    time.sleep(2)
+    ClearScreen()
+    
+    
+    
+    #ToDo:
+    #-Check if writing  the file is possible to change, not writing to an array but to an file
+    #-Delete error messages for creating audio stream
