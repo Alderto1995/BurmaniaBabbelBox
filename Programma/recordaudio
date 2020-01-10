@@ -1,12 +1,13 @@
 #!/usr/bin/python 
                
 #import programs
-import pyaudio, wave, os, sys, select, random, string, time, pygame, errno, threading, string
+import pyaudio, wave, os, sys, select, random, string, time, pygame, errno, threading, string, RPi.GPIO as GPIO
 from contextlib import contextmanager
 try:
     import httplib
 except:
     import http.clien as httplib
+from threading import Event
 
 #Thread voor de tijd bij te houden hoelang er is opgenomen
 class timeThread (threading.Thread):
@@ -30,20 +31,22 @@ class WelkomThread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
-        for x in range(TijdVoorEersteWelkom):
-                if sayWelkom == True:
-                    time.sleep(1)
-        while sayWelkom == True:
-            playWelkom()
-            for x in range(TijdTussenWelkomHeten):
-                if sayWelkom == True:
-                    time.sleep(1)
+        #time.wait(20)
+        while not exit.is_set():
+            if GPIO.input(PIN):
+                playWelkom()
+                exit.wait(10)
+            else:
+                exit.wait(1) 
+    def stop(joe):
+        exit.set()
+                
         
 #Speel het welkom fragment
 def playWelkom():
     os.system("amixer sset 'PCM' 85%")
     PaintScreen("NaamIngeven")
-    Play_Command = 'aplay -q '+'/home/pi/Programma_bestanden/BabbelboxWELKOM.wav'
+    Play_Command = 'aplay -q '+'/home/pi/BurmaniaBabbelbox/Resources/Welkom/BabbelboxWELKOM.wav'
     os.system(Play_Command)
     os.system("amixer sset 'PCM' 100%")
     PaintScreen("NaamIngeven")
@@ -94,6 +97,7 @@ def PaintScreen(status):
 
 #Maak het scherm leeg
 def ClearScreen():
+    #print("ClearScreen")
     os.system('cls' if os.name == 'nt' else 'clear')  
    
 #Als er geen map is, maak die dan
@@ -124,10 +128,7 @@ def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
         google_drive_Upload_Command = "rclone move " + wav_output_filename + " babbelbox:/2019/Babbelbox/Nieuwe_Verhalen/" + VraagWithoutExtension
     os.system(google_drive_Upload_Command)
 
-#Instellingen goedzetten
-pathVragen = '/home/pi/Vragen/'
-filesVragen = os.listdir(pathVragen)
-os.system('amixer cset numid=3 1')  
+ 
   
 #Alle Variabbelen 
 form_1 = pyaudio.paInt16    # 16-bit resolution
@@ -140,12 +141,24 @@ sayWelkom = True
 KeuzeRandomVraag = '1'      #De toets om een random vraag te beantwoorden
 KeuzeEigenVerhaal = '2'     #De toets voor je eigen verhaal in te spreken
 KeuzeVraagInspreken = '5'   #De toets om een nieuwe vraag in te stellen
-TijdTussenWelkomHeten = 300 #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
+TijdTussenWelkomHeten = 20 #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
 TijdVoorEersteWelkom = 20   #De eerste keer duurt het wat langer voordat je welkom wordt geheten
+PIN = 26                    #De pin voor de beweginssensor
+exit = Event()
+
+#Instellingen goedzetten
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(PIN, GPIO.IN)
+pathVragen = '/home/pi/Vragen/'
+filesVragen = os.listdir(pathVragen)
+os.system('amixer cset numid=3 1') 
+
 
 #De main loop waar je nooit uitkomt
 while True: 
+    exit.clear()
     sayWelkom = True
+    print("start")
     welkomThread = WelkomThread()
     welkomThread.start()
     naam_Opnemer = ""
@@ -159,8 +172,8 @@ while True:
         naam_Opnemer = raw_input()
         naam_Opnemer_Underscore = naam_Opnemer.replace(" ", "_")
     sayWelkom = False
+    welkomThread.stop()
     welkomThread.join()
-    
     #Wachten op een keuze
     while keuze == "":
         PaintScreen("KeuzeIngeven")
