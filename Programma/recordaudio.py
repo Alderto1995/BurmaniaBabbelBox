@@ -15,32 +15,34 @@ class timeThread (threading.Thread):
         threading.Thread.__init__(self)
     def run(self):
         ShowTimeRecorded()
-        
+    def stop(self):
+        exitTimer.set()   
 #Laat de tijd zien die is opgenomen
 def ShowTimeRecorded():
     recordedTime = 0
-    while recording == True:
+    while not exitTimer.is_set():
         sys.stdout.write("\r")
         sys.stdout.write("{:2d} seconden opgenomen.".format(recordedTime))
         sys.stdout.flush()
-        time.sleep(1)
+        exitTimer.wait(1)
         recordedTime += 1
-                
+     
+                 
 #Thread die een keer in de zoveel keer welkom zegt
 class WelkomThread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
         #time.wait(20)
-        exit.wait(TijdTussenWelkomHeten)
-        while not exit.is_set():
+        exitWelkom.wait(TijdTussenWelkomHeten)
+        while not exitWelkom.is_set():
             if GPIO.input(PIN):
                 playRandomSound('Welkom')
-                exit.wait(TijdTussenWelkomHeten)
+                exitWelkom.wait(TijdTussenWelkomHeten)
             else:
-                exit.wait(1) 
+                exitWelkom.wait(1) 
     def stop(self):
-        exit.set()
+        exitWelkom.set()
         os.system("killall aplay")
                 
         
@@ -80,7 +82,9 @@ def PaintScreen(status):
     elif status == "KeuzeIngeven":
         print("Druk op "+ KeuzeRandomVraag +" + [enter] om een vraag te beantwoorden")
         print("Druk op "+ KeuzeEigenVerhaal +" + [enter] om een verhaal te vertellen")
-        print("Hierna begint het opnemen automatisch")    
+        print("Hierna begint het opnemen automatisch")
+    elif status == "Vraagvertellen":
+        print("Luister goed!")
     elif status == "Opnemen":
         print(naam_Opnemer+", er wordt opgenomen!")
         print("Vertel je verhaal!\n")
@@ -93,8 +97,8 @@ def PaintScreen(status):
 
 #Maak het scherm leeg
 def ClearScreen():
-    print("ClearScreen")
-    #os.system('cls' if os.name == 'nt' else 'clear')  
+    #print("ClearScreen")
+    os.system('cls' if os.name == 'nt' else 'clear')  
    
 #Als er geen map is, maak die dan
 def CreatFolderIfNotExcist(FilePath):
@@ -118,17 +122,12 @@ def checkInternetConnection():
         
 #upload everythong to drive    
 def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
-    print(keuze)
     if keuze == KeuzeRandomVraag:
-        print("Antwoord")
-        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/Antwoorden/" + VraagWithoutExtension+ '/"'
+        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Antwoorden/" + VraagWithoutExtension+ '"'
     elif keuze == KeuzeEigenVerhaal:
-        print("Verhaal")
-        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/" + '"' 
+        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Verhalen/" + '"' 
     elif keuze == KeuzeVraagInspreken:
-        print("Nieuwe vraag")
-        print(wav_output_filename)
-        google_drive_Upload_Command = "rclone copy " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/Vragen/" + '/"'
+        google_drive_Upload_Command = "rclone copy " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Vragen/" + '"'
     os.system(google_drive_Upload_Command)
 
  
@@ -136,7 +135,7 @@ def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
 #Alle Variabbelen 
 form_1 = pyaudio.paInt16    # 16-bit resolution
 chans = 1                   # 1 channel
-samp_rate = 44100           # 48kHz sampling rate
+samp_rate = 44100           # 44kHz sampling rate
 chunk = 4096                # 2^12 samples for buffer
 dev_index = 2               # device index found by p.get_device_info_by_index(ii)
 recording = False
@@ -144,16 +143,16 @@ sayWelkom = True
 KeuzeRandomVraag = '1'      #De toets om een random vraag te beantwoorden
 KeuzeEigenVerhaal = '2'     #De toets voor je eigen verhaal in te spreken
 KeuzeVraagInspreken = '5'   #De toets om een nieuwe vraag in te stellen
-TijdTussenWelkomHeten = 20  #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
-TijdVoorEersteWelkom = 20   #De eerste keer duurt het wat langer voordat je welkom wordt geheten
+TijdTussenWelkomHeten = 20   #De eerste keer duurt het wat langer voordat je welkom wordt geheten
 PIN = 26                    #De pin voor de beweginssensor
-exit = Event()
+exitWelkom = Event()
+exitTimer = Event()
+pathResources = '/home/pi/BurmaniaBabbelbox/Resources/'
+pathOpnames = '/home/pi/BurmaniaBabbelbox/Opnames/'
 
 #Instellingen goedzetten
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(PIN, GPIO.IN)
-pathResources = '/home/pi/BurmaniaBabbelbox/Resources/'
-pathOpnames = '/home/pi/BurmaniaBabbelbox/Opnames/'
 os.system('amixer cset numid=3 1') 
 os.system("amixer sset 'PCM' 100%")
 
@@ -161,7 +160,8 @@ os.system("amixer sset 'PCM' 100%")
 #De main loop waar je nooit uitkomt
 while True: 
     try:
-        exit.clear()
+        exitWelkom.clear()
+        exitTimer.clear()
         sayWelkom = True
         print("start")
         welkomThread = WelkomThread()
@@ -194,6 +194,7 @@ while True:
         
         #Handelen aan de hand van de verschillende keuzes die gemaakt zijn
         if keuze == KeuzeRandomVraag:        #beantwoord een random vraag
+            PaintScreen("Vraagvertellen")
             Vraag = playRandomSound('Vragen')
             VraagWithoutExtension = os.path.splitext(Vraag)[0]
             FileFolder = pathOpnames + VraagWithoutExtension+"/" 
@@ -215,11 +216,10 @@ while True:
         
         #Begin met opnemen, en start de thread met de tijd dat er opgenomen is
         PaintScreen("Opnemen")
-        recording = True
         tijdThread = timeThread()
         tijdThread.start()
         recordAudio(chunk, frames)
-        recording = False
+        tijdThread.stop()
         tijdThread.join()
         
         # stop the stream, close it, and terminate the pyaudio instantiation
@@ -237,11 +237,11 @@ while True:
         wavefile.close()
         #if internet connection, then save to drive
         if checkInternetConnection():
+            playRandomSound('Bedankt')
             uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze)
             
         #wait 2 seconds to read    
-        raw_input("Opgeslagen!")    
-        playRandomSound('Bedankt')
+        raw_input("Opgeslagen!")   
         ClearScreen()
     except:
         print("Oeps iets is missgegaan, probeer het nog eens")
