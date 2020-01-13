@@ -32,10 +32,11 @@ class WelkomThread (threading.Thread):
         threading.Thread.__init__(self)
     def run(self):
         #time.wait(20)
+        exit.wait(TijdTussenWelkomHeten)
         while not exit.is_set():
             if GPIO.input(PIN):
-                playRandomSound('Bedankt')
-                exit.wait(2)
+                playRandomSound('Welkom')
+                exit.wait(TijdTussenWelkomHeten)
             else:
                 exit.wait(1) 
     def stop(self):
@@ -60,12 +61,15 @@ def randomString(stringLength=7):
   
 #record the audio  
 def recordAudio(chunk, frames):
+    stop = False
     while True:      
         data = stream.read(chunk)
         frames.append(data)
+        if stop == True:
+            break
         #wait for enter press, then break recording
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            break
+            stop = True
 
 #De Methode die steeds het scherm schrijft aan de hand van de status       
 def PaintScreen(status):
@@ -114,10 +118,17 @@ def checkInternetConnection():
         
 #upload everythong to drive    
 def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
-    if keuze == KeuzeVraagInspreken:
-        google_drive_Upload_Command = "rclone copy " + wav_output_filename + " babbelbox:/2019/Babbelbox/Vragen/"
-    else:
-        google_drive_Upload_Command = "rclone move " + wav_output_filename + " babbelbox:/2019/Babbelbox/Nieuwe_Verhalen/" + VraagWithoutExtension
+    print(keuze)
+    if keuze == KeuzeRandomVraag:
+        print("Antwoord")
+        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/Antwoorden/" + VraagWithoutExtension+ '/"'
+    elif keuze == KeuzeEigenVerhaal:
+        print("Verhaal")
+        google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/" + '"' 
+    elif keuze == KeuzeVraagInspreken:
+        print("Nieuwe vraag")
+        print(wav_output_filename)
+        google_drive_Upload_Command = "rclone copy " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBoxOpnames/Vragen/" + '/"'
     os.system(google_drive_Upload_Command)
 
  
@@ -149,92 +160,92 @@ os.system("amixer sset 'PCM' 100%")
 
 #De main loop waar je nooit uitkomt
 while True: 
-    exit.clear()
-    sayWelkom = True
-    print("start")
-    welkomThread = WelkomThread()
-    welkomThread.start()
-    naam_Opnemer = ""
-    frames = []
-    keuze = ""
-    VraagWithoutExtension = ""
-    
-    #make sure there is a name
-    while naam_Opnemer == "":
-        PaintScreen("NaamIngeven")
-        naam_Opnemer = raw_input()
-        naam_Opnemer_Underscore = naam_Opnemer.replace(" ", "_")
-    sayWelkom = False
-    welkomThread.stop()
-    welkomThread.join()
-    #Wachten op een keuze
-    while keuze == "":
-        PaintScreen("KeuzeIngeven")
-        keuze = raw_input()
-        if keuze == KeuzeRandomVraag:
-            break
-        elif keuze == KeuzeEigenVerhaal:
-            break
-        elif keuze == KeuzeVraagInspreken:
-            break
+    try:
+        exit.clear()
+        sayWelkom = True
+        print("start")
+        welkomThread = WelkomThread()
+        welkomThread.start()
+        naam_Opnemer = ""
+        frames = []
         keuze = ""
-    naam_opnemer_random = naam_Opnemer_Underscore + "_"+ randomString() 
-    
-    #Handelen aan de hand van de verschillende keuzes die gemaakt zijn
-    if keuze == '1':        #beantwoord een random vraag
-        Vraag = playRandomSound('Vragen')
-        VraagWithoutExtension = os.path.splitext(Vraag)[0]
-        FileFolder = pathOpnames + VraagWithoutExtension+"/" 
-        CreatFolderIfNotExcist(FileFolder)
-        wav_output_filename = FileFolder + naam_opnemer_random + ".wav"
-    elif keuze == '2':      #vertel een verhaal
-        wav_output_filename = pathOpnames+ naam_opnemer_random + ".wav" 
-    elif keuze == '3':      #spreek een vraag in
-        PaintScreen("VraagInspreken")
-        intesprekenVraag = raw_input()
-        intesprekenVraag_Underscore = intesprekenVraag.replace(" ", "_")
-        wav_output_filename = pathVragen + intesprekenVraag_Underscore +".wav"
+        VraagWithoutExtension = ""
         
-    #create listening stream
-    audio = pyaudio.PyAudio() # create pyaudio instantiation
-    stream = audio.open(format = form_1,rate = samp_rate,channels = chans, \
-                        input_device_index = dev_index,input = True, \
-                        frames_per_buffer=chunk)
-    
-    #Begin met opnemen, en start de thread met de tijd dat er opgenomen is
-    PaintScreen("Opnemen")
-    recording = True
-    tijdThread = timeThread()
-    tijdThread.start()
-    recordAudio(chunk, frames)
-    recording = False
-    tijdThread.join()
-    
-    # stop the stream, close it, and terminate the pyaudio instantiation
-    PaintScreen("Bedankt")
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-    
-    # save the audio frames as .wav file
-    wavefile = wave.open(wav_output_filename,'wb')
-    wavefile.setnchannels(chans)
-    wavefile.setsampwidth(audio.get_sample_size(form_1))
-    wavefile.setframerate(samp_rate)
-    wavefile.writeframes(b''.join(frames))
-    wavefile.close()
-    playRandomSound('Bedankt')
-    #if internet connection, then save to drive
-    #if checkInternetConnection():
-    #    uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze)
-    if keuze == KeuzeVraagInspreken:
-        filesVragen = os.listdir(pathVragen)
+        #make sure there is a name
+        while naam_Opnemer == "":
+            PaintScreen("NaamIngeven")
+            naam_Opnemer = raw_input()
+            naam_Opnemer_Underscore = naam_Opnemer.replace(" ", "_")
+        sayWelkom = False
+        welkomThread.stop()
+        welkomThread.join()
+        #Wachten op een keuze
+        while keuze == "":
+            PaintScreen("KeuzeIngeven")
+            keuze = raw_input()
+            if keuze == KeuzeRandomVraag:
+                break
+            elif keuze == KeuzeEigenVerhaal:
+                break
+            elif keuze == KeuzeVraagInspreken:
+                break
+            keuze = ""
+        naam_opnemer_random = naam_Opnemer_Underscore + "_"+ randomString() 
         
-    #wait 2 seconds to read    
-    raw_input("Opgeslagen!")
-    time.sleep(2)
-    ClearScreen()
-    
+        #Handelen aan de hand van de verschillende keuzes die gemaakt zijn
+        if keuze == KeuzeRandomVraag:        #beantwoord een random vraag
+            Vraag = playRandomSound('Vragen')
+            VraagWithoutExtension = os.path.splitext(Vraag)[0]
+            FileFolder = pathOpnames + VraagWithoutExtension+"/" 
+            CreatFolderIfNotExcist(FileFolder)
+            wav_output_filename = FileFolder + naam_opnemer_random + ".wav"
+        elif keuze == KeuzeEigenVerhaal:      #vertel een verhaal
+            wav_output_filename = pathOpnames+ naam_opnemer_random + ".wav" 
+        elif keuze == KeuzeVraagInspreken:      #spreek een vraag in
+            PaintScreen("VraagInspreken")
+            intesprekenVraag = raw_input()
+            intesprekenVraag_Underscore = intesprekenVraag.replace(" ", "_")
+            wav_output_filename = pathResources+"Vragen/" + intesprekenVraag_Underscore+ "_"+ randomString() +".wav"
+            
+        #create listening stream
+        audio = pyaudio.PyAudio() # create pyaudio instantiation
+        stream = audio.open(format = form_1,rate = samp_rate,channels = chans, \
+                            input_device_index = dev_index,input = True, \
+                            frames_per_buffer=chunk)
+        
+        #Begin met opnemen, en start de thread met de tijd dat er opgenomen is
+        PaintScreen("Opnemen")
+        recording = True
+        tijdThread = timeThread()
+        tijdThread.start()
+        recordAudio(chunk, frames)
+        recording = False
+        tijdThread.join()
+        
+        # stop the stream, close it, and terminate the pyaudio instantiation
+        PaintScreen("Bedankt")
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+        
+        # save the audio frames as .wav file
+        wavefile = wave.open(wav_output_filename,'wb')
+        wavefile.setnchannels(chans)
+        wavefile.setsampwidth(audio.get_sample_size(form_1))
+        wavefile.setframerate(samp_rate)
+        wavefile.writeframes(b''.join(frames))
+        wavefile.close()
+        #if internet connection, then save to drive
+        if checkInternetConnection():
+            uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze)
+            
+        #wait 2 seconds to read    
+        raw_input("Opgeslagen!")    
+        playRandomSound('Bedankt')
+        ClearScreen()
+    except:
+        print("Oeps iets is missgegaan, probeer het nog eens")
+        time.sleep(2)
     
     
     #ToDo:

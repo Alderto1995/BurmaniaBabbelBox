@@ -4,22 +4,22 @@ import os
 
 #Download newest record audio
 print("Programma Bestanden ophalen")
-os.system("rclone copy babbelbox:/2019/Babbelbox/Programma_bestanden/  /home/pi/Programma_bestanden/")
+os.system("rclone copy babbelbox:/2020/Babbelbox/Programma_bestanden/  /home/pi/BurmaniaBabbelbox/Programma/")
 print("Bestanden zijn binnen")
 
 #Download newest question
 print("Vragen ophalen!")
-os.system("rclone copy babbelbox:/2019/Babbelbox/Vragen/  /home/pi/Vragen/")
+os.system("rclone copy" +'" ' +"babbelbox:/2020 StudioBurBus/Babbelbox/Vragen/  /home/pi/BurmaniaBabbelbox/Resources/Vragen" + '"')
 print("Vragen zijn binnen")
 
 #Make it compile
-os.system("chmod a+x /home/pi/Programma_bestanden/recordaudio.py")
-os.system("mv /home/pi/Programma_bestanden/recordaudio.py /home/pi/Programma_bestanden/recordaudio")
-os.system("sudo mv /home/pi/Programma_bestanden/recordaudio /usr/bin/ ")
+os.system("chmod a+x /home/pi/BurmaniaBabbelbox/Programma/recordaudio.py")
+os.system("mv /home/pi/BurmaniaBabbelbox/Programma/recordaudio.py /home/pi/BurmaniaBabbelbox/Programma/recordaudio")
+os.system("sudo mv /home/pi/BurmaniaBabbelbox/Programma/recordaudio /usr/bin/ ")
 
-os.system("chmod a+x /home/pi/Programma_bestanden/autoUpdate.py")
-os.system("mv /home/pi/Programma_bestanden/autoUpdate.py /home/pi/Programma_bestanden/autoUpdate")
-os.system("sudo mv /home/pi/Programma_bestanden/autoUpdate /usr/bin/ ")
+os.system("chmod a+x /home/pi/BurmaniaBabbelbox/Programma/autoUpdate.py")
+os.system("mv /home/pi/BurmaniaBabbelbox/Programma/autoUpdate.py /home/pi/BurmaniaBabbelbox/Programma/autoUpdate")
+os.system("sudo mv /home/pi/BurmaniaBabbelbox/Programma/autoUpdate /usr/bin/ ")
 print("Klaar")
 #Change it to good directory
 #sudo mv /home/pi/Programma_bestanden/recordaudio /usr/bin/ 
