@@ -3,14 +3,14 @@
 import os
 
 #Download newest record audio
-print("Programma Bestanden ophalen")
+#print("Programma Bestanden ophalen")
 #os.system("rclone copy babbelbox:/2020/Babbelbox/Programma_bestanden/  /home/pi/BurmaniaBabbelbox/Programma/")
-print("Bestanden zijn binnen")
+#print("Bestanden zijn binnen")
 
 #Download newest question
-print("Vragen ophalen!")
-os.system("rclone copy" +'" ' +"babbelbox:/2020 StudioBurBus/Babbelbox/Vragen/  /home/pi/BurmaniaBabbelbox/Resources/Vragen" + '"')
-print("Vragen zijn binnen")
+#print("Vragen ophalen!")
+#os.system("rclone copy" +'" ' +"babbelbox:/2020 StudioBurBus/Babbelbox/Vragen/  /home/pi/BurmaniaBabbelbox/Resources/Vragen" + '"')
+#print("Vragen zijn binnen")
 
 #Make it compile
 
