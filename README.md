@@ -1,2 +1,2 @@
 # BurmaniaBabbelBox
-Een opname programma voor #VerhalenMaken en #VerhalenVertellen voor Burmania
+Een opname programma voor #VerhalenMaken en #VerhalenVertellen voor Studio BurBus
