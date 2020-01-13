@@ -34,38 +34,30 @@ class WelkomThread (threading.Thread):
         #time.wait(20)
         while not exit.is_set():
             if GPIO.input(PIN):
-                playWelkom()
-                exit.wait(10)
+                playRandomSound('Bedankt')
+                exit.wait(2)
             else:
                 exit.wait(1) 
-    def stop(joe):
+    def stop(self):
         exit.set()
+        os.system("killall aplay")
                 
         
-#Speel het welkom fragment
-def playWelkom():
-    os.system("amixer sset 'PCM' 85%")
-    PaintScreen("NaamIngeven")
-    Play_Command = 'aplay -q '+'/home/pi/BurmaniaBabbelbox/Resources/Welkom/BabbelboxWELKOM.wav'
+#Speel een Random fragment
+def playRandomSound(folder):
+    pathSound = pathResources + folder + '/'
+    listSounds = os.listdir(pathSound)
+    index = random.randrange(0, len(listSounds))
+    FileName = listSounds[index]
+    Play_Command = 'aplay -q '+ '"' + pathSound+FileName+'"'
     os.system(Play_Command)
-    os.system("amixer sset 'PCM' 100%")
-    PaintScreen("NaamIngeven")
+    return FileName
             
 #Create random String, so no duplicates are made                
 def randomString(stringLength=7):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(stringLength))
-
-#Speel een random vraag af
-def PlayRandomVraag():
-    index = random.randrange(0, len(filesVragen))
-    FileName = filesVragen[index]
-    FileNameAndPath = '/home/pi/Vragen/'+ FileName
-    Play_Command = 'aplay -q '+FileNameAndPath
-    os.system(Play_Command)
-    ClearScreen
-    return FileName
-    
+  
 #record the audio  
 def recordAudio(chunk, frames):
     while True:      
@@ -97,8 +89,8 @@ def PaintScreen(status):
 
 #Maak het scherm leeg
 def ClearScreen():
-    #print("ClearScreen")
-    os.system('cls' if os.name == 'nt' else 'clear')  
+    print("ClearScreen")
+    #os.system('cls' if os.name == 'nt' else 'clear')  
    
 #Als er geen map is, maak die dan
 def CreatFolderIfNotExcist(FilePath):
@@ -141,7 +133,7 @@ sayWelkom = True
 KeuzeRandomVraag = '1'      #De toets om een random vraag te beantwoorden
 KeuzeEigenVerhaal = '2'     #De toets voor je eigen verhaal in te spreken
 KeuzeVraagInspreken = '5'   #De toets om een nieuwe vraag in te stellen
-TijdTussenWelkomHeten = 20 #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
+TijdTussenWelkomHeten = 20  #De tijd in seconden hoelang het duurt voordat je welkom wordt geheten
 TijdVoorEersteWelkom = 20   #De eerste keer duurt het wat langer voordat je welkom wordt geheten
 PIN = 26                    #De pin voor de beweginssensor
 exit = Event()
@@ -149,9 +141,10 @@ exit = Event()
 #Instellingen goedzetten
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(PIN, GPIO.IN)
-pathVragen = '/home/pi/Vragen/'
-filesVragen = os.listdir(pathVragen)
+pathResources = '/home/pi/BurmaniaBabbelbox/Resources/'
+pathOpnames = '/home/pi/BurmaniaBabbelbox/Opnames/'
 os.system('amixer cset numid=3 1') 
+os.system("amixer sset 'PCM' 100%")
 
 
 #De main loop waar je nooit uitkomt
@@ -189,13 +182,13 @@ while True:
     
     #Handelen aan de hand van de verschillende keuzes die gemaakt zijn
     if keuze == '1':        #beantwoord een random vraag
-        Vraag = PlayRandomVraag()
+        Vraag = playRandomSound('Vragen')
         VraagWithoutExtension = os.path.splitext(Vraag)[0]
-        FileFolder = "/home/pi/Opnames/"+ VraagWithoutExtension+"/" 
+        FileFolder = pathOpnames + VraagWithoutExtension+"/" 
         CreatFolderIfNotExcist(FileFolder)
         wav_output_filename = FileFolder + naam_opnemer_random + ".wav"
     elif keuze == '2':      #vertel een verhaal
-        wav_output_filename = "/home/pi/Opnames/" + naam_opnemer_random + ".wav" 
+        wav_output_filename = pathOpnames+ naam_opnemer_random + ".wav" 
     elif keuze == '3':      #spreek een vraag in
         PaintScreen("VraagInspreken")
         intesprekenVraag = raw_input()
@@ -222,7 +215,7 @@ while True:
     stream.stop_stream()
     stream.close()
     audio.terminate()
-
+    
     # save the audio frames as .wav file
     wavefile = wave.open(wav_output_filename,'wb')
     wavefile.setnchannels(chans)
@@ -230,7 +223,7 @@ while True:
     wavefile.setframerate(samp_rate)
     wavefile.writeframes(b''.join(frames))
     wavefile.close()
-    
+    playRandomSound('Bedankt')
     #if internet connection, then save to drive
     #if checkInternetConnection():
     #    uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze)
