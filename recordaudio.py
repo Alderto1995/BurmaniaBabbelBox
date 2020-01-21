@@ -1,34 +1,44 @@
 #!/usr/bin/python 
                
 #import programs
-import pyaudio, wave, os, sys, select, random, string, time, pygame, errno, threading, string, RPi.GPIO as GPIO
+import pyaudio
+import wave 
+import os
+import sys
+import select
+import random
+import string
+import time
+import pygame
+import errno
+import RPi.GPIO as GPIO
+import threading
+from threading import Event
 from contextlib import contextmanager
 try:
     import httplib
 except:
     import http.clien as httplib
-from threading import Event
+
 
 class exit_thread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
+        
     def run(self):
-        print("exit thread started")
         time_buttons_pressed = 0
         while True:
+            time.sleep(0.3)
             yellow_button = GPIO.input(yellowButtonPin)
             blue_button = GPIO.input(blueButtonPin)
             if time_buttons_pressed > 10:
                 time_buttons_pressed = 0
                 shut_down_raspberry()
             elif yellow_button == False and blue_button == False:
-                print("Buttons pressed for zoveel secondn:")
                 time_buttons_pressed += 0.3
-                print(time_buttons_pressed)
-                time.sleep(0.3)
             else:
                 time_buttons_pressed = 0
-
+                
 def shut_down_raspberry():
     GPIO.output(greenLedPin, GPIO.HIGH)
     GPIO.output(yellowLedPin, GPIO.HIGH)
@@ -40,15 +50,19 @@ def shut_down_raspberry():
     from subprocess import call
     call("sudo shutdown -h now", shell=True)
 
+
 #Thread voor de tijd bij te houden hoelang er is opgenomen
 class timeThread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
+        
     def run(self):
         ShowTimeRecorded()
+        
     def stop(self):
         exitTimer.set()   
-#Laat de tijd zien die is opgenomen
+        
+    #Laat de tijd zien die is opgenomen
 def ShowTimeRecorded():
     recordedTime = 0
     while not exitTimer.is_set():
@@ -63,6 +77,7 @@ def ShowTimeRecorded():
 class WelkomThread (threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
+        
     def run(self):
         exitWelkom.wait(tijdTussenWelkomHeten)
         while not exitWelkom.is_set():
@@ -71,6 +86,7 @@ class WelkomThread (threading.Thread):
                 exitWelkom.wait(tijdTussenWelkomHeten)
             else:
                 exitWelkom.wait(1) 
+                
     def stop(self):
         exitWelkom.set()
         os.system("killall aplay")
@@ -78,13 +94,13 @@ class WelkomThread (threading.Thread):
         
 #Speel een Random fragment
 def playRandomSound(folder):
-    pathSound = pathResources + folder + '/'
-    listSounds = os.listdir(pathSound)
-    index = random.randrange(0, len(listSounds))
-    FileName = listSounds[index]
-    Play_Command = 'aplay -q '+ '"' + pathSound+FileName+'"'
-    os.system(Play_Command)
-    return FileName
+    path_sound = pathResources + folder + '/'
+    list_sounds = os.listdir(path_sound)
+    index = random.randrange(0, len(list_sounds))
+    filename = list_sounds[index]
+    play_command = 'aplay -q '+ '"' + path_sound+filename+'"'
+    os.system(play_command)
+    return filename
             
 #Create random String, so no duplicates are made                
 def randomString(stringLength=7):
@@ -217,14 +233,13 @@ while True:
         PaintScreen("KeuzeIngeven")
         #Wachten op een keuze
         while waitForKeuze == True:
+            time.sleep(0.1)
             buttonYellow = GPIO.input(yellowButtonPin)
             buttonBlue = GPIO.input(blueButtonPin)
-            if buttonYellow == False and buttonBlue == False:
-                waitForKeuze = True
-            elif buttonYellow == False:
+            if buttonYellow == False:
                 keuze = KeuzeRandomVraag
                 waitForKeuze = False
-            elif buttonBlue == False:
+            if buttonBlue == False:
                 keuze = KeuzeEigenVerhaal
                 waitForKeuze = False
         
@@ -252,12 +267,13 @@ while True:
             intesprekenVraag_Underscore = intesprekenVraag.replace(" ", "_")
             wav_output_filename = pathResources+"Vragen/" + intesprekenVraag_Underscore+ "_"+ randomString() +".wav"
         GPIO.output(yellowLedPin, GPIO.HIGH)     
+        
         #create listening stream
         audio = pyaudio.PyAudio() # create pyaudio instantiation
         stream = audio.open(format = form_1,rate = samp_rate,channels = chans, \
                             input_device_index = dev_index,input = True, \
                             frames_per_buffer=chunk)
-        print(5)
+        
         #Begin met opnemen, en start de thread met de tijd dat er opgenomen is
         PaintScreen("Opnemen")
         tijdThread = timeThread()
