@@ -13,15 +13,16 @@ import os
 #print("Vragen zijn binnen")
 
 #Make it compile
+babbelBoxLocation = '/home/pi/BurmaniaBabbelBox/Programma/'
 
-os.system("cp /home/pi/BurmaniaBabbelbox/Programma/recordaudio.py /home/pi/BurmaniaBabbelbox/Programma/recordaudio")
-os.system("chmod a+x /home/pi/BurmaniaBabbelbox/Programma/recordaudio")
-os.system("sudo mv /home/pi/BurmaniaBabbelbox/Programma/recordaudio /usr/bin/ ")
+os.system("cp " + babbelBoxLocation + "recordaudio.py " + babbelBoxLocation + "recordaudio")
+os.system("chmod a+x " + babbelBoxLocation + "recordaudio")
+os.system("sudo mv " + babbelBoxLocation + "recordaudio /usr/bin/ ")
 
 
-os.system("cp /home/pi/BurmaniaBabbelbox/Programma/autoUpdate.py /home/pi/BurmaniaBabbelbox/Programma/autoUpdate")
-os.system("chmod a+x /home/pi/BurmaniaBabbelbox/Programma/autoUpdate")
-os.system("sudo mv /home/pi/BurmaniaBabbelbox/Programma/autoUpdate /usr/bin/ ")
+os.system("cp " + babbelBoxLocation + "autoUpdate.py " + babbelBoxLocation + "autoUpdate")
+os.system("chmod a+x " + babbelBoxLocation + "autoUpdate")
+os.system("sudo mv " + babbelBoxLocation + "autoUpdate /usr/bin/ ")
 print("Klaar")
 #Change it to good directory
 #sudo mv /home/pi/Programma_bestanden/recordaudio /usr/bin/ 
