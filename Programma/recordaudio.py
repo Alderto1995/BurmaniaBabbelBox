@@ -99,6 +99,8 @@ def playRandomSound(folder):
     index = random.randrange(0, len(list_sounds))
     filename = list_sounds[index]
     play_command = 'aplay -q '+ '"' + path_sound+filename+'"'
+    if folder == 'Bedankt':
+        play_command += ' &'
     os.system(play_command)
     return filename
             
@@ -144,11 +146,12 @@ def PaintScreen(status):
     elif status == "Bedankt":
         print("Bedankt voor je verhaal!\n")
         print("Opslaan, eventjes geduld....")
+    elif status == "Oeps":
+        print("Oeps iets is missgegaan, probeer het nog eens")
 
 #Maak het scherm leeg
 def ClearScreen():
-    print("clearScreen")
-    #os.system('cls' if os.name == 'nt' else 'clear')  
+    os.system('cls' if os.name == 'nt' else 'clear')  
    
 #Als er geen map is, maak die dan
 def CreatFolderIfNotExcist(FilePath):
@@ -164,7 +167,6 @@ def checkInternetConnection():
     try:
         conn.request("HEAD", "/")
         conn.close()
-        print("Dit kan een minuut duren")
         return True
     except:
         conn.close()
@@ -178,6 +180,7 @@ def uploadToDrive(wav_output_filename, VraagWithoutExtension, keuze):
         google_drive_Upload_Command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Verhalen/" + '"' 
     elif keuze == KeuzeVraagInspreken:
         google_drive_Upload_Command = "rclone copy " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Vragen/" + '"'
+    google_drive_Upload_Command = google_drive_Upload_Command + path_config_file
     os.system(google_drive_Upload_Command)
 
  
@@ -202,6 +205,7 @@ exitWelkom = Event()
 exitTimer = Event()
 pathResources = '/home/pi/BurmaniaBabbelBox/Resources/'
 pathOpnames = '/home/pi/BurmaniaBabbelBox/Opnames/'
+path_config_file = " --config /home/pi/.config/rclone/rclone.conf"
 
 #Instellingen goedzetten
 GPIO.setmode(GPIO.BOARD)
@@ -215,6 +219,8 @@ os.system('amixer cset numid=3 1')
 os.system("amixer sset 'PCM' 100%")
 Exit_thread = exit_thread()
 Exit_thread.start()
+
+
 
 #De main loop waar je nooit uitkomt
 while True: 
@@ -266,7 +272,6 @@ while True:
             intesprekenVraag = raw_input()
             intesprekenVraag_Underscore = intesprekenVraag.replace(" ", "_")
             wav_output_filename = pathResources+"Vragen/" + intesprekenVraag_Underscore+ "_"+ randomString() +".wav"
-        GPIO.output(yellowLedPin, GPIO.HIGH)     
         
         #create listening stream
         audio = pyaudio.PyAudio() # create pyaudio instantiation
@@ -278,6 +283,8 @@ while True:
         PaintScreen("Opnemen")
         tijdThread = timeThread()
         tijdThread.start()
+        GPIO.output(yellowLedPin, GPIO.HIGH)     
+        
         recordAudio(chunk, frames)
         tijdThread.stop()
         tijdThread.join()
@@ -304,7 +311,7 @@ while True:
         ClearScreen()
     except:
         ClearScreen()
-        print("Oeps iets is missgegaan, probeer het nog eens")
+        PaintScreen("Oeps")
         GPIO.output(greenLedPin, GPIO.HIGH)
         GPIO.output(yellowLedPin, GPIO.HIGH)
         GPIO.output(redLedPin, GPIO.HIGH)
