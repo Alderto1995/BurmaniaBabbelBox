@@ -40,7 +40,7 @@ class ExitThread (threading.Thread):
                 time_buttons_pressed = 0
                 
 def shut_down_raspberry():
-    
+    turn_on_all_led()
     from subprocess import call
     call("sudo shutdown -h now", shell=True)
 
@@ -84,7 +84,7 @@ class WelcomeThread (threading.Thread):
     def stop(self):
         exit_welcome.set()
         os.system("killall aplay")
-		turn_on_all_led()
+        
                 
         
 #Speel een Random fragment
@@ -146,10 +146,11 @@ def paint_screen(status):
 
 #Maak het scherm leeg
 def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')  
-	
+    print("clearsceen")
+    #os.system('cls' if os.name == 'nt' else 'clear')  
+
 def turn_on_all_led():
-	GPIO.output(green_led_pin, GPIO.HIGH)
+    GPIO.output(green_led_pin, GPIO.HIGH)
     GPIO.output(yellow_led_pin, GPIO.HIGH)
     GPIO.output(red_led_pin, GPIO.HIGH)
     time.sleep(2)
@@ -177,12 +178,12 @@ def check_internet_connection():
         return False
         
 #upload alles naar google drive   
-def upload_to_drive(wav_output_filename, question_without_extension, keuze):
-    if choice== choice_random_question:
+def upload_to_drive(wav_output_filename, question_without_extension, choice):
+    if choice == choice_random_question:
         google_drive_upload_command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Antwoorden/" + question_without_extension+ '"'
-    elif choice== choice_tell_story:
+    elif choice == choice_tell_story:
         google_drive_upload_command = "rclone move " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Verhalen/" + '"' 
-    elif choice== choice_ask_question:
+    elif choice == choice_ask_question:
         google_drive_upload_command = "rclone copy " + wav_output_filename + ' "'+"babbelbox:/2020 StudioBurBus/BabbelBox/Vragen/" + '"'
     google_drive_upload_command = google_drive_upload_command + path_config_file
     os.system(google_drive_upload_command)
@@ -193,7 +194,7 @@ def upload_to_drive(wav_output_filename, question_without_extension, keuze):
 form_1 = pyaudio.paInt16    # 16-bit resolution
 chans = 1                   # 1 channel
 samp_rate = 44100           # 44kHz sampling rate
-chunk = 4096                # 2^12 samples for buffer
+chunk = 4096         # 2^12 samples for buffer
 dev_index = 2               # device index found by p.get_device_info_by_index(ii)
 choice_random_question = '1'      #De toets om een random vraag te beantwoorden
 choice_tell_story = '2'     #De toets voor je eigen verhaal in te spreken
@@ -235,9 +236,9 @@ while True:
         welcome_thread = WelcomeThread()
         welcome_thread.start()
         frames = []
-        choice= ""
+        choice = ""
         question_without_extension = ""
-		file_name_recording = ""
+        file_name_recording = ""
         wait_for_choice= True
         clear_screen()
         paint_screen("KeuzeIngeven")
@@ -246,10 +247,12 @@ while True:
             time.sleep(0.1)
             yellow_button = GPIO.input(yellow_button_pin)
             blue_button = GPIO.input(blue_button_pin)
-            if yellow_button == False:
+            if yellow_button == False and blue_button == False:
+                wait_for_choice = True
+            elif yellow_button == False:
                 choice= choice_random_question
                 wait_for_choice= False
-            if blue_button == False:
+            elif blue_button == False:
                 choice= choice_tell_story
                 wait_for_choice= False
         
@@ -308,9 +311,9 @@ while True:
         wavefile.close()
         #if internet connection, then save to drive
         GPIO.output(red_led_pin, GPIO.HIGH)
+        play_random_sound('Bedankt')
         if check_internet_connection():
-            play_random_sound('Bedankt')
-            upload_to_drive(wav_output_filename, question_without_extension, keuze)
+            upload_to_drive(wav_output_filename, question_without_extension, choice)
         GPIO.output(red_led_pin, GPIO.LOW)  
         clear_screen()
     except:
